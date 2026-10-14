@@ -169,7 +169,7 @@ const VENDOR_IDLE = ['Chicken over rice!', 'Gyro! Gyro!', 'Hot dogs, pretzels!',
 const VENDOR_GIVEUP = ['Next time, my friend!', 'Okay, okay. Tomorrow.', 'His loss.'];
 const VENDOR_WIN = ["Extra white sauce, on the house! ...Oh. Oh no.", 'Chicken over rice? ...Maybe later, boss.', 'Too late for the hot sauce, my friend.', 'You want a napkin? You want many napkins.'];
 const THOMAS_START = ['That cold brew is going right through me.', "That burrito isn't sitting right.", 'I gotta find a bathroom. NOW.'];
-const THOMAS_IDLE = ['I went to Gilman.', 'Starting attack at Trinity.', 'Beers?', 'Ever been to Chappy?', 'Which Greenwich club are you a member of?', "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
+const THOMAS_IDLE = ['I went to Gilman.', 'Is there a Molé around here?', 'Starting attack at Trinity.', 'Beers?', 'Ever been to Chappy?', 'Which Greenwich club are you a member of?', "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
 let quoteBag = [];
 const nextQuote = () => { if (!quoteBag.length) quoteBag = shuffle(THOMAS_IDLE.slice()); return quoteBag.pop(); };
 const THOMAS_LOW = ["I'm turtling.", "I'm turtling. I'm TURTLING.", "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
