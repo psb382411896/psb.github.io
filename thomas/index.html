@@ -553,7 +553,7 @@ function drawBubble(c, x, y, text, edge) {
   c.font = '800 12px Archivo, Arial, sans-serif';
   const lines = wrapText(c, text, 150), lh = 15;
   const w = Math.max(...lines.map(l => c.measureText(l).width)) + 16, h = lines.length * lh + 10;
-  const bx = x - w / 2, by = y - h - 9;
+  const bx = clamp(x - w / 2, cam.x + 6, cam.x + W / Z - w - 6), by = y - h - 9;
   c.fillStyle = '#fff'; c.strokeStyle = edge || '#111'; c.lineWidth = 2;
   rr(c, bx, by, w, h, 8); c.fill(); c.stroke();
   c.beginPath(); c.moveTo(x - 5, by + h - 1); c.lineTo(x, by + h + 7); c.lineTo(x + 5, by + h - 1); c.fill();
