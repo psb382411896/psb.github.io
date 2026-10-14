@@ -168,7 +168,9 @@ const VENDOR_CHASE = ['White sauce? Hot sauce?', 'Five dollars! Five!', 'Extra w
 const VENDOR_IDLE = ['Chicken over rice!', 'Gyro! Gyro!', 'Hot dogs, pretzels!', 'Halal food!', 'Lamb over rice!'];
 const VENDOR_GIVEUP = ['Next time, my friend!', 'Okay, okay. Tomorrow.', 'His loss.'];
 const VENDOR_WIN = ["Extra white sauce, on the house! ...Oh. Oh no.", 'Chicken over rice? ...Maybe later, boss.', 'Too late for the hot sauce, my friend.', 'You want a napkin? You want many napkins.'];
-const THOMAS_START = ['I gotta find a bathroom. NOW.', 'Where are the bathrooms in this city?!', 'Okay. Okay. Stay calm.', 'Why did I get the large cold brew?'];
+const THOMAS_START = ['That cold brew is going right through me.', "That burrito isn't sitting right.", 'I gotta find a bathroom. NOW.'];
+const THOMAS_IDLE = ['I went to Gilman.', 'Starting attack at Trinity.', 'Beers?', 'Ever been to Chappy?', 'Which Greenwich club are you a member of?', "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
+const THOMAS_LOW = ["I'm turtling.", "I'm turtling. I'm TURTLING.", "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
 const HOODS = [
   { name: 'Midtown', aves: ['11th Ave', '10th Ave', '9th Ave', '8th Ave', '7th Ave', '6th Ave'], st: 46, side: 'W' },
   { name: 'Times Square', aves: ['10th Ave', '9th Ave', '8th Ave', '7th Ave', 'Broadway', '6th Ave'], st: 50, side: 'W' },
@@ -651,7 +653,7 @@ function startLevel() {
   parts = []; pops = [];
   distP = dS;
   timeMax = Math.round(dS[looIdx] * T / 150 * 2 + 18 - Math.min(level, 8));
-  timeLeft = timeMax; jit = 0; warned = {}; gurgleT = 6; thomasTalkT = rand(8, 12);
+  timeLeft = timeMax; jit = 0; warned = {}; gurgleT = 6; thomasTalkT = rand(5, 8);
   cam.x = player.x - W / Z / 2; cam.y = player.y - H / Z / 2;
   $('lvl').textContent = level; $('lvlName').textContent = hood().name;
   updateCups();
@@ -698,7 +700,7 @@ function drink(cf) {
     timeLeft -= pen; shake = .5;
     pop(player.x, player.y - 60, '-' + pen + 's', '#ff5a4e');
     banner('Too much coffee! It went straight through him. -' + pen + 's', 3, true);
-    say(player, pick(['Oh no. Oh no no no.', 'Why did I do that?!', 'That was a mistake.']), 2.4);
+    say(player, 'That cold brew is going right through me.', 2.4);
     setTimeout(sndGurgle, 250);
   } else if (jit >= 1) {
     pop(player.x, player.y - 60, 'ZOOM!', '#fccc0a');
@@ -706,7 +708,7 @@ function drink(cf) {
     say(player, 'Okay, that\'s enough coffee.', 2);
   } else {
     pop(player.x, player.y - 60, 'ZOOM!', '#fccc0a');
-    say(player, pick(['Ahh. Coffee.', 'Caffeine!', 'Let\'s GO.']), 1.8);
+    say(player, pick(['Ahh. Cold brew.', 'Beers after this?', 'Starting attack at Trinity!']), 1.8);
   }
   jit = Math.min(3.99, jit + 1);
   updateCups();
@@ -783,7 +785,7 @@ function update(dt) {
   timeLeft -= dt;
   jit = Math.max(0, jit - dt / 18);
   updateCups();
-  if (timeLeft <= 20 && !warned.a) { warned.a = 1; banner('20 seconds. Thomas is sweating.', 2.5, true); sndGurgle(); }
+  if (timeLeft <= 20 && !warned.a) { warned.a = 1; banner('20 seconds. Thomas is sweating.', 2.5, true); sndGurgle(); say(player, "I'm turtling.", 2); }
   if (timeLeft <= 10 && !warned.b) { warned.b = 1; banner('10 seconds! He is CLENCHING.', 2.5, true); sndGurgle(); }
   if (timeLeft < 15) { gurgleT -= dt; if (gurgleT <= 0) { gurgleT = rand(2.5, 4); sndGurgle(); shake = Math.max(shake, .15); } }
   if (timeLeft <= 0) { timeLeft = 0; lose('time'); return; }
@@ -801,7 +803,7 @@ function update(dt) {
   if (Math.abs(inp.x) > .1) p.fx = inp.x > 0 ? 1 : -1;
   if (p.boost > 0 && p.moving && Math.random() < dt * 25) parts.push({ x: p.x - p.fx * 10, y: p.y - rand(4, 30), vx: -p.fx * 60, vy: 0, life: .25, max: .25, r: 0, line: true });
   thomasTalkT -= dt;
-  if (thomasTalkT <= 0) { thomasTalkT = rand(9, 14); if (!p.bubble) say(p, timeLeft < 15 ? pick(['Hnnngh.', 'Not now. NOT NOW.', 'Hold it, Thomas. Hold it.']) : pick(['Why are there no bathrooms?!', 'Every Starbucks has a code!', 'I should have gone at the office.', 'Gotta go, gotta go, gotta go.']), 2.2); }
+  if (thomasTalkT <= 0) { thomasTalkT = rand(6, 10); if (!p.bubble) say(p, timeLeft < 15 ? pick(THOMAS_LOW) : pick(THOMAS_IDLE), 2.2); }
   // distance fields
   distTimer -= dt;
   if (distTimer <= 0) { distTimer = .2; distP = bfs(tIdx(p.x, p.y)); }
@@ -843,7 +845,7 @@ function finish() {
       $('lostQuote').textContent = '"' + pick(VENDOR_WIN) + '"';
       $('lostMsg').textContent = 'A street meat vendor cornered him at ' + placeName(player.x, player.y) + ', ' + away + ' from the restroom.';
     } else {
-      $('lostQuote').textContent = '"' + pick(['I was so close.', 'Nobody look at me.', 'I need new pants. And a new city.']) + '"';
+      $('lostQuote').textContent = '"' + pick(['I was turtling. The turtle won.', "That burrito wasn't sitting right.", 'That cold brew went right through me.', 'Beers? ...After I change.']) + '"';
       $('lostMsg').textContent = 'Time ran out ' + away + ' from the restroom.';
     }
     drawPortrait($('lostPic'), LOOK_THOMAS, '#3a2a20', { stain: true, sad: true, stink: true });
