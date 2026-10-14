@@ -170,6 +170,8 @@ const VENDOR_GIVEUP = ['Next time, my friend!', 'Okay, okay. Tomorrow.', 'His lo
 const VENDOR_WIN = ["Extra white sauce, on the house! ...Oh. Oh no.", 'Chicken over rice? ...Maybe later, boss.', 'Too late for the hot sauce, my friend.', 'You want a napkin? You want many napkins.'];
 const THOMAS_START = ['That cold brew is going right through me.', "That burrito isn't sitting right.", 'I gotta find a bathroom. NOW.'];
 const THOMAS_IDLE = ['I went to Gilman.', 'Starting attack at Trinity.', 'Beers?', 'Ever been to Chappy?', 'Which Greenwich club are you a member of?', "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
+let quoteBag = [];
+const nextQuote = () => { if (!quoteBag.length) quoteBag = shuffle(THOMAS_IDLE.slice()); return quoteBag.pop(); };
 const THOMAS_LOW = ["I'm turtling.", "I'm turtling. I'm TURTLING.", "That burrito isn't sitting right.", 'That cold brew is going right through me.'];
 const HOODS = [
   { name: 'Midtown', aves: ['11th Ave', '10th Ave', '9th Ave', '8th Ave', '7th Ave', '6th Ave'], st: 46, side: 'W' },
@@ -614,7 +616,7 @@ function startLevel() {
   const farFrom = (i, list, d) => list.every(j => Math.abs(i % GW - j % GW) + Math.abs(Math.floor(i / GW) - Math.floor(j / GW)) >= d);
   // street meat vendors
   vendors = []; carts = [];
-  const nV = Math.min(3 + level, 11), vSpeed = Math.min(112 + level * 8, 162), sense = 6 + Math.min(level, 5);
+  const nV = Math.min(3 + level, 11), vSpeed = Math.min(74 + level * 6, 112), sense = 6 + Math.min(level, 5);
   for (const i of shuffle(walks.filter(i => dS[i] >= 9 && distLoo[i] >= 3))) {
     if (vendors.length >= nV) break;
     if (!farFrom(i, used, 6)) continue;
@@ -642,7 +644,7 @@ function startLevel() {
   const nT = Math.min(5 + level, 13);
   for (let k = 0; k < nT * 3 && taxis.length < nT; k++) {
     const v = Math.random() < .5, lane = randInt(0, v ? NX : NY), sub = randInt(0, 1), s = sub ? 1 : -1;
-    const tx = { v, s, speed: rand(150, 230) + level * 6, col: pick(TAXI_COLS), honkT: 0 };
+    const tx = { v, s, speed: rand(100, 160) + level * 5, col: pick(TAXI_COLS), honkT: 0 };
     if (v) { tx.x = (lane * PX + sub + .5) * T; tx.y = rand(0, GH * T); } else { tx.y = (lane * PY + sub + .5) * T; tx.x = rand(0, GW * T); }
     if (dist(tx, player) < 6 * T) continue;
     taxis.push(tx);
@@ -652,8 +654,8 @@ function startLevel() {
   for (const i of shuffle(walks.filter(i => dS[i] >= 3)).slice(0, 16)) { const p = center(i); pigeons.push({ x: p.x + rand(-12, 12), y: p.y + rand(-10, 10), z: 0, fly: false, vx: 0, vy: 0, fx: Math.random() < .5 ? 1 : -1, ph: rand(0, 6) }); }
   parts = []; pops = [];
   distP = dS;
-  timeMax = Math.round(dS[looIdx] * T / 150 * 2 + 18 - Math.min(level, 8));
-  timeLeft = timeMax; jit = 0; warned = {}; gurgleT = 6; thomasTalkT = rand(5, 8);
+  timeMax = Math.round(dS[looIdx] * T / 105 * 2 + 20 - Math.min(level, 8));
+  timeLeft = timeMax; jit = 0; warned = {}; gurgleT = 6; thomasTalkT = rand(3, 4);
   cam.x = player.x - W / Z / 2; cam.y = player.y - H / Z / 2;
   $('lvl').textContent = level; $('lvlName').textContent = hood().name;
   updateCups();
@@ -727,14 +729,14 @@ function stepVendor(v, dt) {
   if (v.state === 'chase') {
     sp = v.speed;
     target = dist(v, player) < T * 1.4 ? { x: player.x, y: player.y } : nextStep(v, distP);
-    if (!v.bubble && Math.random() < dt * .35) say(v, pick(VENDOR_CHASE), 1.8);
+    if (!v.bubble && Math.random() < dt * .6) say(v, pick(VENDOR_CHASE), 2.2);
   } else if (v.state === 'return') {
     sp = v.speed * .55;
     if (dist(v, v.home) < 6) { v.state = 'idle'; }
     else target = v.homeD[vi] <= 1 ? v.home : nextStep(v, v.homeD) || v.home;
   } else {
     v.idleT -= dt;
-    if (v.idleT <= 0) { v.idleT = rand(4, 8); if (dist(v, player) < 10 * T) say(v, pick(VENDOR_IDLE), 1.6); }
+    if (v.idleT <= 0) { v.idleT = rand(2.5, 5); if (dist(v, player) < 12 * T) say(v, pick(VENDOR_IDLE), 2); }
   }
   v.moving = false;
   if (target) {
@@ -795,7 +797,7 @@ function update(dt) {
   if (p.boost > 0) p.boost -= dt;
   if (p.hitCool > 0) p.hitCool -= dt;
   const inp = inputVec();
-  let sp = p.boost > 0 ? 250 : 150;
+  let sp = p.boost > 0 ? 170 : 105;
   if (p.stun > 0) { p.stun -= dt; sp = 0; }
   move(p, inp.x * sp * dt + p.kx * dt, inp.y * sp * dt + p.ky * dt);
   p.kx *= Math.pow(.02, dt); p.ky *= Math.pow(.02, dt);
@@ -803,7 +805,7 @@ function update(dt) {
   if (Math.abs(inp.x) > .1) p.fx = inp.x > 0 ? 1 : -1;
   if (p.boost > 0 && p.moving && Math.random() < dt * 25) parts.push({ x: p.x - p.fx * 10, y: p.y - rand(4, 30), vx: -p.fx * 60, vy: 0, life: .25, max: .25, r: 0, line: true });
   thomasTalkT -= dt;
-  if (thomasTalkT <= 0) { thomasTalkT = rand(6, 10); if (!p.bubble) say(p, timeLeft < 15 ? pick(THOMAS_LOW) : pick(THOMAS_IDLE), 2.2); }
+  if (thomasTalkT <= 0) { thomasTalkT = rand(3, 5); if (!p.bubble) say(p, timeLeft < 15 ? pick(THOMAS_LOW) : nextQuote(), 2.8); }
   // distance fields
   distTimer -= dt;
   if (distTimer <= 0) { distTimer = .2; distP = bfs(tIdx(p.x, p.y)); }
