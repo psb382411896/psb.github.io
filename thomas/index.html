@@ -95,7 +95,7 @@
       <li><canvas id="castCoffee" width="180" height="180"></canvas><span>Coffee cart</span></li>
       <li><canvas id="castLoo" width="180" height="180"></canvas><span>Restroom</span></li>
     </ul>
-    <p class="how">Thomas has to poop, and the clock is ticking. Get him to the <b>public restroom</b> before time runs out. <b>Coffee</b> gives him a burst of speed, but a third cup too soon goes straight through him and knocks time off the clock. And keep away from the <b>street meat vendors</b>. If one catches him, he poops his pants.</p>
+    <p class="how">Thomas has to poop, and the clock is ticking. Get him to the <b>public restroom</b> before time runs out. <b>Coffee</b> gives him a burst of speed, but a third cup too soon goes straight through him and knocks time off the clock. And keep away from the <b>street meat vendors</b>. If one catches him, he poops his pants. Find a <b>Wegovy shot</b> for 5 extra seconds.</p>
     <p class="keys">Drag anywhere to walk &middot; Arrow keys or WASD</p>
     <button id="play" type="button">Go</button>
     <p class="small" id="bestLine"></p>
@@ -591,7 +591,7 @@ setSnd();
 
 /* ---------- Game state ---------- */
 let state = 'menu', level = 1, timeLeft = 0, timeMax = 0, jit = 0, tg = 0, endT = 0, endReason = '', catcher = null;
-let player = null, vendors = [], carts = [], coffees = [], taxis = [], pigeons = [], parts = [], pops = [];
+let player = null, vendors = [], carts = [], coffees = [], shots = [], taxis = [], pigeons = [], parts = [], pops = [];
 let loo = null, distP = null, distLoo = null, distTimer = 0, cam = { x: 0, y: 0 }, shake = 0, bannerT = 0;
 let warned = {}, gurgleT = 0, thomasTalkT = 0;
 
@@ -638,6 +638,14 @@ function startLevel() {
     if (farFrom(i, used, 3) && farFrom(i, cUsed, 7)) cUsed.push(i);
   }
   for (const i of cUsed) { const p = center(i); coffees.push({ x: p.x, y: p.y + 12, used: false, ph: rand(0, 6) }); }
+  // Wegovy shots: rare, each worth +5s
+  shots = [];
+  const sUsed = [];
+  for (const i of shuffle(walks.filter(i => dS[i] >= 6 && distLoo[i] >= 4))) {
+    if (sUsed.length >= 3) break;
+    if (farFrom(i, used, 3) && farFrom(i, cUsed, 3) && farFrom(i, sUsed, 10)) sUsed.push(i);
+  }
+  for (const i of sUsed) { const p = center(i); shots.push({ x: p.x, y: p.y + 6, ph: rand(0, 6) }); }
   // taxis
   taxis = [];
   const nT = Math.min(5 + level, 13);
@@ -713,6 +721,27 @@ function drink(cf) {
   }
   jit = Math.min(3.99, jit + 1);
   updateCups();
+}
+function grabShot(sh) {
+  sh.got = true; timeLeft += 5;
+  [660, 880, 1320].forEach((f, k) => tone(f, .14, 'triangle', .07, k * .07));
+  puff(sh.x, sh.y - 20, 8, 'rgba(120,220,255,');
+  pop(player.x, player.y - 60, '+5s', '#5ce08c');
+  banner('Wegovy shot! +5 seconds on the clock.', 2.5);
+  say(player, pick(['Wegovy! Not even hungry for street meat now.', 'Wegovy. Buys me some time.', 'Ozempic\'s cooler cousin!']), 2.4);
+}
+function drawShot(c, sh, t) {
+  const x = sh.x, b = Math.sin(t * 3.4 + sh.ph) * 3, y = sh.y - 22 + b;
+  c.fillStyle = 'rgba(0,0,0,.22)'; c.beginPath(); c.ellipse(x, sh.y, 12, 4, 0, 0, TAU); c.fill();
+  const p = (t * 1.1 + sh.ph) % 1;
+  c.strokeStyle = `rgba(120,220,255,${(1 - p) * .8})`; c.lineWidth = 2; circ(c, x, y, 12 + p * 10); c.stroke();
+  c.save(); c.translate(x, y); c.rotate(-.6);
+  c.fillStyle = '#f4f7fb'; rr(c, -15, -4.5, 26, 9, 4); c.fill(); c.strokeStyle = '#1d3f78'; c.lineWidth = 1.2; c.stroke();
+  c.fillStyle = '#2f7fd6'; c.fillRect(-6, -4.5, 9, 9);
+  c.fillStyle = '#1d3f78'; rr(c, 10, -3.5, 6, 7, 2); c.fill();
+  c.strokeStyle = '#9aa3ad'; c.lineWidth = 1.2; c.beginPath(); c.moveTo(-15, 0); c.lineTo(-20, 0); c.stroke();
+  c.restore();
+  c.font = '900 8px Archivo, Arial, sans-serif'; c.textAlign = 'center'; c.textBaseline = 'middle'; c.lineWidth = 3; c.strokeStyle = '#111'; c.strokeText('WEGOVY', x, y + 15); c.fillStyle = '#7fd4ff'; c.fillText('WEGOVY', x, y + 15);
 }
 function stepVendor(v, dt) {
   v.t += dt;
@@ -814,6 +843,8 @@ function update(dt) {
     if (d < 20 && d > .01) { const px = (A.x - B.x) / d * .7, py = (A.y - B.y) / d * .7; move(A, px, py); move(B, -px, -py); }
   }
   for (const cf of coffees) if (!cf.used && Math.hypot(cf.x - p.x, cf.y - 12 - p.y) < 30) drink(cf);
+  for (const sh of shots) if (!sh.got && Math.hypot(sh.x - p.x, sh.y - p.y) < 28) grabShot(sh);
+  shots = shots.filter(sh => !sh.got);
   for (const v of vendors) if (v.state === 'chase' && dist(v, p) < 21) { catcher = v; lose('meat'); return; }
   if (dist(p, loo) < 28) { win(); return; }
 }
@@ -881,6 +912,7 @@ function render() {
   for (const tr of trees) if (inView(tr.x, tr.y, 80)) list.push({ y: tr.y, f: () => drawTree(c, tr, tg) });
   for (const ct of carts) if (inView(ct.x, ct.y, 90)) list.push({ y: ct.y, f: () => drawMeatCart(c, ct, tg) });
   for (const cf of coffees) if (inView(cf.x, cf.y, 80)) list.push({ y: cf.y, f: () => drawCoffeeCart(c, cf, tg) });
+  for (const sh of shots) if (inView(sh.x, sh.y, 60)) list.push({ y: sh.y, f: () => drawShot(c, sh, tg) });
   for (const pg of pigeons) if (inView(pg.x, pg.y, 40)) list.push({ y: pg.y, f: () => drawPigeon(c, pg, tg) });
   if (inView(loo.x, loo.y, 90) && !(state === 'ending' && endReason === 'win')) list.push({ y: loo.y, f: () => drawLoo(c, loo.x, loo.y, tg) });
   if (state === 'ending' && endReason === 'win') list.push({ y: loo.y, f: () => drawLoo(c, loo.x, loo.y, tg, true) });
