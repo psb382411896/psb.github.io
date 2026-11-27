@@ -315,10 +315,17 @@ function canvasTex(w, h, draw, repeat) {
 }
 const hemi = new THREE.HemisphereLight(0xdbe8ff, 0x8a8478, 2.9); scene.add(hemi);
 // image-based lighting and reflections from a real outdoor city photo sphere
-new THREE.RGBELoader().load('env.hdr', t => {
+// Binary assets load as-is, or as base64 text files where the host only serves text (window.ASSET_TEXT).
+function loadBin(url) {
+  if (!window.ASSET_TEXT) return fetch(url).then(r => { if (!r.ok) throw new Error(url); return r.arrayBuffer(); });
+  return fetch(url + '.txt').then(r => { if (!r.ok) throw new Error(url); return r.text(); }).then(t => { const b = atob(t.trim()), u = new Uint8Array(b.length); for (let i = 0; i < b.length; i++) u[i] = b.charCodeAt(i); return u.buffer; });
+}
+loadBin('env.hdr').then(buf => {
+  const d = new THREE.RGBELoader().parse(buf), t = new THREE.DataTexture(d.data, d.width, d.height, THREE.RGBAFormat, d.type);
+  t.mapping = THREE.EquirectangularReflectionMapping; t.colorSpace = THREE.LinearSRGBColorSpace; t.minFilter = t.magFilter = THREE.LinearFilter; t.flipY = true; t.needsUpdate = true;
   const pm = new THREE.PMREMGenerator(renderer); scene.environment = pm.fromEquirectangular(t).texture; t.dispose(); pm.dispose();
   hemi.intensity = 1.5;
-}, undefined, () => {});
+}).catch(() => {});
 const sun = new THREE.DirectionalLight(0xfff0d8, 2.1);
 sun.castShadow = true; sun.shadow.mapSize.set(isTouch ? 1024 : 2048, isTouch ? 1024 : 2048);
 Object.assign(sun.shadow.camera, { left: -55, right: 55, top: 55, bottom: -55, near: 1, far: 260 });
@@ -545,16 +552,14 @@ function personMat(src) {
   return m;
 }
 function loadPerson(name) {
-  return new Promise(res => {
+  return loadBin('people/' + name + '.fbx').then(buf => {
     const mgr = new THREE.LoadingManager(); mgr.onError = () => {};
     const warn = console.warn; console.warn = () => {}; // the files name TGA textures we replace with JPEGs below
-    new THREE.FBXLoader(mgr).load('people/' + name + '.fbx', o => {
-      console.warn = warn;
-      for (const c of [...o.children]) if (c.isLight) o.remove(c);
-      o.traverse(x => { if (x.isSkinnedMesh) x.material = [].concat(x.material).map(personMat); });
-      models[name] = o; res();
-    }, undefined, () => { console.warn = warn; res(); });
-  });
+    let o; try { o = new THREE.FBXLoader(mgr).parse(buf, 'people/'); } finally { console.warn = warn; }
+    for (const c of [...o.children]) if (c.isLight) o.remove(c);
+    o.traverse(x => { if (x.isSkinnedMesh) x.material = [].concat(x.material).map(personMat); });
+    models[name] = o;
+  }).catch(() => {});
 }
 const ANIM_BONES = ['Spine', 'Spine1', 'Neck', 'Head', 'L_Thigh', 'R_Thigh', 'L_Calf', 'R_Calf', 'L_Foot', 'R_Foot', 'L_UpperArm', 'R_UpperArm', 'L_Forearm', 'R_Forearm', 'L_Hand', 'R_Hand'];
 function makePerson(name, fallback) {
