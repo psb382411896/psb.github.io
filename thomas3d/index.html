@@ -548,7 +548,7 @@ function personMat(src) {
   const cut = /opacity|glasses/.test(src.name);
   if (cut && src.name.startsWith('m014')) return new THREE.MeshBasicMaterial({ visible: false });
   const m = new THREE.MeshStandardMaterial({ roughness: .8, alphaTest: cut ? .42 : 0, side: cut ? THREE.DoubleSide : THREE.FrontSide, visible: false });
-  texLoader.load('people/' + src.name + '_color.' + (cut ? 'png' : 'jpg'), t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; m.map = t; m.visible = true; m.needsUpdate = true; }, undefined, () => {});
+  texLoader.load('people/' + src.name + '_color.' + (cut ? 'png' : 'jpg') + '?v=3', t => { t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; m.map = t; m.visible = true; m.needsUpdate = true; }, undefined, () => {});
   return m;
 }
 function loadPerson(name) {
@@ -612,24 +612,109 @@ function animHuman(h, dt, amt, rate, pose) {
 }
 
 /* ---------- Thomas's golf bag ---------- */
+const bagTex = canvasTex(256, 256, (c, w, h) => {
+  c.fillStyle = '#1b2c50'; c.fillRect(0, 0, w, h);
+  for (let y = 0; y < h; y += 3) { c.fillStyle = `rgba(255,255,255,${.015 + Math.random() * .03})`; c.fillRect(0, y, w, 1); } // nylon weave
+  c.fillStyle = '#f2f2ee'; c.fillRect(0, 0, w, 14); c.fillRect(0, 150, w, 5); c.fillRect(96, 14, 5, 136); c.fillRect(224, 14, 5, 136);
+  c.fillStyle = '#c0261b'; c.fillRect(0, 155, w, 4);
+  c.fillStyle = '#f2f2ee'; c.font = '900 26px "Archivo Black", Arial, sans-serif'; c.textAlign = 'center'; c.fillText('THOMAS', 162, 96, 110);
+  c.strokeStyle = 'rgba(0,0,0,.35)'; c.lineWidth = 2; for (const x of [20, 76]) { c.strokeRect(x - 12, 40, 44, 90); c.beginPath(); c.moveTo(x - 8, 52); c.lineTo(x + 28, 52); c.stroke(); }
+});
 function makeGolfBag() {
   const g = new THREE.Group(), bag = new THREE.Group(); g.add(bag);
-  const navy = mat('#1d2f55', .7), trim = mat('#f2f2ee', .6), blk = mat('#151515', .8), steel = mat('#c9ced4', .2, 1);
-  bag.add(mesh(G.cyl, navy, 0, 0, 0, .125, .86, .125));
-  bag.add(mesh(G.cyl, trim, 0, .43, 0, .135, .05, .135)); bag.add(mesh(G.cyl, blk, 0, -.44, 0, .13, .04, .13));
-  bag.add(mesh(G.box, trim, 0, .05, .12, .13, .3, .06)); bag.add(mesh(G.box, navy, 0, -.24, .125, .12, .16, .05));
-  // club heads poking out of the top: three woods with headcovers, a few irons and the putter
-  const clubs = [[-.05, .04, .3, 'wood', '#c0261b'], [.05, .05, .27, 'wood', '#f2f2ee'], [0, -.01, .24, 'wood', '#1f7a4c'], [-.06, -.05, .2, 'iron'], [.06, -.04, .22, 'iron'], [0, -.07, .18, 'iron'], [.02, .08, .16, 'iron']];
-  for (const [x, z, h, kind, col] of clubs) {
-    bag.add(mesh(G.cyl, steel, x, .43 + h / 2, z, .008, h, .008));
-    if (kind === 'wood') bag.add(mesh(G.sph, mat(col, .9), x, .46 + h, z + .015, .045, .05, .06));
-    else { const hd = mesh(G.box, steel, x + .02, .44 + h, z, .07, .035, .014); hd.rotation.z = .5; bag.add(hd); }
-  }
-  // shoulder strap over the right shoulder
-  const strap = mesh(G.box, blk, .06, .12, .2, .045, .62, .02); strap.rotation.z = .5; bag.add(strap);
+  const body = new THREE.MeshStandardMaterial({ map: bagTex, roughness: .75 }), navy = mat('#1b2c50', .75), blk = mat('#141414', .85), white = mat('#f2f2ee', .7);
+  const steel = mat('#d5d9de', .18, 1), graphite = mat('#1d1d20', .35, .4), grip = mat('#101010', .95), chrome = mat('#eef1f4', .08, 1);
+  // tapered stand bag: body, moulded top cuff with dividers, base, pockets, towel, carry handle, folded stand legs
+  bag.add(mesh(new THREE.CylinderGeometry(.118, .1, .84, 20), body, 0, 0, 0));
+  bag.add(mesh(new THREE.CylinderGeometry(.128, .12, .07, 20), blk, 0, .44, 0));
+  const rim = mesh(new THREE.TorusGeometry(.122, .012, 8, 24), blk, 0, .475, 0); rim.rotation.x = Math.PI / 2; bag.add(rim);
+  bag.add(mesh(G.box, blk, 0, .47, 0, .23, .012, .016)); bag.add(mesh(G.box, blk, 0, .47, 0, .016, .012, .23));
+  bag.add(mesh(new THREE.CylinderGeometry(.104, .11, .05, 20), blk, 0, -.44, 0));
+  const pk = (x, y, z, w, h2, d, m) => { const q = mesh(G.sph, m, x, y, z, w, h2, d); bag.add(q); return q; };
+  pk(0, -.12, .1, .085, .2, .05, navy); pk(0, .2, .105, .07, .1, .04, navy); pk(.1, -.05, 0, .04, .22, .08, navy); pk(-.1, -.1, 0, .035, .16, .075, navy);
+  bag.add(mesh(G.box, white, 0, -.12, .15, .1, .004, .004)); bag.add(mesh(G.box, white, 0, .2, .146, .08, .004, .004));
+  const towel = mesh(G.box, white, -.12, .22, .06, .012, .26, .13); towel.rotation.z = .08; bag.add(towel);
+  const hdl = mesh(new THREE.TorusGeometry(.06, .011, 6, 14, Math.PI), blk, 0, .28, -.115); hdl.rotation.set(0, Math.PI / 2, -Math.PI / 2); bag.add(hdl);
+  for (const sx of [-1, 1]) { const leg = mesh(G.cyl, steel, sx * .05, -.02, -.122, .006, .8, .006); leg.rotation.z = sx * .02; bag.add(leg); bag.add(mesh(G.box, blk, sx * .058, -.42, -.122, .03, .012, .02)); }
+  // clubs sit grip-down, so only shafts and heads show above the cuff
+  const club = (x, z, len, kind, col) => {
+    const c = new THREE.Group(); c.position.set(x, .44, z); c.rotation.set(rand(-.05, .05), rand(0, 6), rand(-.05, .05)); bag.add(c);
+    c.add(mesh(G.cyl, kind === 'iron' || kind === 'putter' ? steel : graphite, 0, len / 2, 0, kind === 'iron' ? .0048 : .0055, len, .0048));
+    if (kind === 'iron') {
+      // hosel, then an angled blade with a darker cavity back and a bright leading edge
+      c.add(mesh(G.cyl, chrome, 0, len + .018, 0, .0065, .04, .0065));
+      const hd = new THREE.Group(); hd.position.set(0, len + .04, 0); hd.rotation.z = -1.05; c.add(hd);
+      hd.add(mesh(G.box, chrome, .036, 0, 0, .078, .042, .011)); hd.add(mesh(G.box, mat('#6f757c', .4, .9), .04, 0, -.006, .058, .028, .004));
+      hd.add(mesh(G.box, chrome, .036, -.022, .003, .078, .006, .016));
+    } else if (kind === 'putter') {
+      c.add(mesh(G.cyl, chrome, .012, len + .012, 0, .005, .03, .005));
+      c.add(mesh(G.box, chrome, .03, len + .03, 0, .1, .024, .028)); c.add(mesh(G.box, mat('#c0261b', .5), .03, len + .043, 0, .05, .003, .004));
+    } else {
+      // driver or fairway wood: glossy pear-shaped head, face plate, and a knitted headcover on some
+      const r = kind === 'driver' ? 1 : .8, hd = new THREE.Group(); hd.position.set(0, len + .03 * r, .012); c.add(hd);
+      if (col) {
+        hd.add(mesh(G.sph, mat(col, 1), 0, .005, .01, .052 * r, .05 * r, .066 * r)); hd.add(mesh(new THREE.CylinderGeometry(.03 * r, .018, .11, 12), mat(col, 1), 0, -.075, -.004));
+        for (let k = 0; k < 3; k++) hd.add(mesh(new THREE.CylinderGeometry(.031 * r - k * .003, .031 * r - k * .003, .012, 12), white, 0, -.045 - k * .028, -.004));
+        hd.add(mesh(G.sph, white, 0, .06 * r, .02, .02));
+      } else {
+        hd.add(mesh(G.sph, new THREE.MeshStandardMaterial({ color: '#0d0d10', roughness: .08, metalness: .6 }), 0, 0, .012, .05 * r, .034 * r, .058 * r));
+        hd.add(mesh(G.box, chrome, 0, -.004, .068 * r, .07 * r, .04 * r, .004)); hd.add(mesh(G.cyl, graphite, 0, -.03, -.012, .0075, .04, .0075));
+      }
+    }
+  };
+  club(-.055, .05, .3, 'driver', '#c0261b'); club(.05, .055, .26, 'wood', '#1f7a4c'); club(0, .075, .23, 'wood', null);
+  club(-.07, -.02, .2, 'iron'); club(-.035, -.06, .185, 'iron'); club(.01, -.03, .17, 'iron'); club(.05, -.06, .155, 'iron'); club(.08, -.01, .14, 'iron'); club(-.02, .015, .125, 'iron'); club(.035, .01, .11, 'iron');
+  club(.085, .04, .19, 'putter');
+  // padded double strap running up over the shoulders
+  for (const sx of [-1, 1]) { const st = mesh(G.box, blk, sx * .07, .1, .17, .05, .5, .022); st.rotation.set(-.12, 0, sx * .25); bag.add(st); }
   bag.rotation.z = -.42; bag.position.set(.02, 0, -.17);
   return g;
 }
+
+/* ---------- Christmas gnomes (needle-felted) ---------- */
+const feltTex = canvasTex(256, 256, (c, w, h) => {
+  c.fillStyle = '#e9e9e9'; c.fillRect(0, 0, w, h);
+  for (let k = 0; k < 5000; k++) { const x = Math.random() * w, y = Math.random() * h, a = Math.random() * TAU, l = 3 + Math.random() * 9; c.strokeStyle = `rgba(${Math.random() < .5 ? '255,255,255' : '90,90,90'},${.08 + Math.random() * .2})`; c.lineWidth = .7; c.beginPath(); c.moveTo(x, y); c.quadraticCurveTo(x + Math.cos(a) * l * .5 + 2, y + Math.sin(a) * l * .5, x + Math.cos(a) * l, y + Math.sin(a) * l); c.stroke(); }
+}, true);
+const feltMat = new THREE.MeshStandardMaterial({ map: feltTex, vertexColors: true, roughness: 1 });
+// bake a group of simple meshes into one vertex-coloured geometry, so each gnome is a single draw call
+function bake(group) {
+  group.updateMatrixWorld(true); const pos = [], nor = [], uv = [], col = [], cc = new THREE.Color();
+  group.traverse(o => {
+    if (!o.isMesh) return;
+    const gg = o.geometry.toNonIndexed().applyMatrix4(o.matrixWorld), n = gg.attributes.position.count; cc.set(o.userData.col);
+    pos.push(...gg.attributes.position.array); nor.push(...gg.attributes.normal.array); uv.push(...gg.attributes.uv.array);
+    for (let i = 0; i < n; i++) col.push(cc.r, cc.g, cc.b);
+  });
+  const out = new THREE.BufferGeometry();
+  out.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); out.setAttribute('normal', new THREE.Float32BufferAttribute(nor, 3));
+  out.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2)); out.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
+  return out;
+}
+const gnomeGeo = (() => {
+  const g = new THREE.Group(), add = (geo, col, x, y, z, sx, sy, sz, rx, rz) => { const m = new THREE.Mesh(geo, feltMat); m.position.set(x, y, z); m.scale.set(sx, sy == null ? sx : sy, sz == null ? sx : sz); if (rx) m.rotation.x = rx; if (rz) m.rotation.z = rz; m.userData.col = col; g.add(m); };
+  const sph = new THREE.SphereGeometry(1, 14, 10), cone = new THREE.ConeGeometry(1, 1, 18), cyl = new THREE.CylinderGeometry(.72, 1, 1, 18);
+  add(cyl, '#55683a', 0, .2, 0, .125, .21, .115);                  // green tunic, flared at the hem
+  add(sph, '#55683a', 0, .3, 0, .092, .06, .085);                  // shoulders
+  add(new THREE.CylinderGeometry(1, 1, 1, 18), '#5a3d28', 0, .165, 0, .121, .032, .112); // belt
+  add(new THREE.BoxGeometry(1, 1, 1), '#c9a544', 0, .165, .112, .042, .04, .012);        // buckle
+  add(new THREE.BoxGeometry(1, 1, 1), '#5a3d28', 0, .165, .117, .022, .02, .008);
+  for (const s of [-1, 1]) { add(sph, '#55683a', s * .115, .235, .01, .034, .075, .036, 0, s * .35); add(sph, '#efb49a', s * .14, .17, .015, .028); }
+  add(cone, '#f4efe6', 0, .25, .072, .098, .25, .07, Math.PI + .12); // long white beard, point down
+  add(sph, '#f4efe6', 0, .345, .05, .1, .05, .075);
+  add(sph, '#f0b39a', 0, .375, .108, .04, .036, .038);              // round pink nose under the hat brim
+  add(cone, '#96281f', 0, .53, -.004, .128, .36, .122);             // tall red hat pulled down over the eyes
+  add(cone, '#96281f', .028, .735, 0, .034, .12, .034, 0, -.75);    // bent tip
+  return bake(g);
+})();
+const bootGeo = new THREE.SphereGeometry(1, 10, 8), bootMat = new THREE.MeshStandardMaterial({ map: feltTex, color: '#5a3b2a', roughness: 1 });
+function makeGnome() {
+  const g = new THREE.Group(), body = new THREE.Mesh(gnomeGeo, feltMat); body.castShadow = true; g.add(body);
+  const boots = [-1, 1].map(s => { const b = new THREE.Mesh(bootGeo, bootMat); b.scale.set(.058, .05, .075); b.position.set(s * .058, .048, .012); g.add(b); return b; });
+  g.scale.setScalar(rand(1.15, 1.6));
+  g.userData = { body, boots, ph: rand(0, 6) }; return g;
+}
+function sndJingle(vol) { for (let k = 0; k < 4; k++) tone(pick([2093, 2349, 2637, 3136]), .09, 'sine', vol, k * .07, 1); }
 
 /* ---------- Wild turkeys ---------- */
 const featherTex = canvasTex(256, 256, (c, w, h) => {
@@ -827,7 +912,7 @@ setSnd();
 
 /* ---------- Game state ---------- */
 let state = 'menu', timeLeft = 0, jit = 0, tg = 0, endT = 0, endReason = '', catcher = null;
-let player = null, vendors = [], coffees = [], shots = [], taxis = [], peds = [], turkeys = [], stinks = [];
+let player = null, vendors = [], coffees = [], shots = [], taxis = [], peds = [], turkeys = [], gnomes = [], stinks = [];
 let loo = null, distP = null, distLoo = null, distTimer = 0, shake = 0, bannerT = 0, warned = {}, gurgleT = 0, talkT = 0;
 let world = null, mapBase = null;
 const cam = { yaw: 0, pitch: .24, dist: 5.4, fov: 62 };
@@ -946,11 +1031,19 @@ function startLevel() {
   }
   turkeys = [];
   const land = []; for (let i = 0; i < grid.length; i++) if (walkable(grid[i]) && dS[i] >= 2) land.push(i);
-  for (let f = 0; f < (isTouch ? 16 : 42); f++) {
+  for (let f = 0; f < (isTouch ? 10 : 28); f++) {
     const i = pick(land), c = center(i);
     for (let k = 0, n = randInt(2, 5); k < n; k++) {
       const m = makeTurkey(k === 0 || Math.random() < .35); world.add(m);
       turkeys.push({ x: c.x + rand(-2, 2), z: c.z + rand(-2, 2), m, rot: rand(0, 6), tile: i, prev: -1, target: null, speed: rand(.7, 1.1), off: { x: rand(-1.7, 1.7), z: rand(-1.7, 1.7) }, flee: 0, wait: rand(0, 3), gob: rand(4, 40), sp: 0 });
+    }
+  }
+  gnomes = [];
+  for (let f = 0; f < (isTouch ? 36 : 105); f++) {
+    const i = pick(land), c = center(i);
+    for (let k = 0, n = randInt(2, 5); k < n; k++) {
+      const m = makeGnome(); world.add(m);
+      gnomes.push({ gn: true, x: c.x + rand(-2, 2), z: c.z + rand(-2, 2), m, rot: rand(0, 6), tile: i, prev: -1, target: null, speed: rand(.55, .9), off: { x: rand(-1.8, 1.8), z: rand(-1.8, 1.8) }, flee: 0, wait: rand(0, 3), gob: rand(4, 40), sp: 0 });
     }
   }
   stinks = [];
@@ -1063,10 +1156,10 @@ function stepPed(p, dt) {
 function stepTurkey(t, dt) {
   const d = dist(t, player);
   t.gob -= dt;
-  if (t.gob <= 0) { t.gob = rand(20, 50); if (d < 28) sndGobble(.012 + .03 * (1 - d / 28)); }
+  if (t.gob <= 0) { t.gob = rand(20, 50); if (d < 28) (t.gn ? sndJingle(.006 + .014 * (1 - d / 28)) : sndGobble(.012 + .03 * (1 - d / 28))); }
   if (t.flee <= 0 && d < 3.2 && state === 'play') {
-    t.flee = rand(1.4, 2.2); t.fa = Math.atan2(t.x - player.x, t.z - player.z) + rand(-.5, .5); sndGobble(.045);
-    if (!player.bubT && Math.random() < .5) say(player, pick(['Is that a TURKEY?', 'Out of the way, bird!', 'Turkeys. In Manhattan.', 'Not now, turkey!']), 1.8);
+    t.flee = rand(1.4, 2.2); t.fa = Math.atan2(t.x - player.x, t.z - player.z) + rand(-.5, .5); t.gn ? sndJingle(.03) : sndGobble(.045);
+    if (!player.bubT && Math.random() < .4) say(player, pick(t.gn ? ['Are those... gnomes?', 'Out of the way, little guy!', 'Why are there gnomes?!', 'Merry Christmas, I guess.', 'Nice hat. Gotta go.'] : ['Is that a TURKEY?', 'Out of the way, bird!', 'Turkeys. In Manhattan.', 'Not now, turkey!']), 1.8);
   }
   if (t.flee <= 0) for (const tx of taxis) if (Math.abs(tx.x - t.x) < 7 && Math.abs(tx.z - t.z) < 7) {
     const ahead = tx.v ? (t.z - tx.z) * tx.s : (t.x - tx.x) * tx.s, side = tx.v ? t.x - tx.x : t.z - tx.z;
@@ -1074,7 +1167,7 @@ function stepTurkey(t, dt) {
   }
   t.sp = 0;
   if (t.flee > 0) {
-    t.flee -= dt; t.sp = 4.6; move(t, Math.sin(t.fa) * t.sp * dt, Math.cos(t.fa) * t.sp * dt);
+    t.flee -= dt; t.sp = t.gn ? 3 : 4.6; move(t, Math.sin(t.fa) * t.sp * dt, Math.cos(t.fa) * t.sp * dt);
     t.rot += angDiff(t.fa, t.rot) * Math.min(1, dt * 10); t.target = null; t.tile = tIdx(t.x, t.z); return;
   }
   if (t.wait > 0) { t.wait -= dt; return; } // stop to peck
@@ -1112,6 +1205,7 @@ function update(dt) {
   stepTaxis(dt);
   for (const p of peds) stepPed(p, dt);
   for (const t of turkeys) stepTurkey(t, dt);
+  for (const t of gnomes) stepTurkey(t, dt);
   for (const s of stinks) { s.position.y += dt * .7; s.material.opacity -= dt * .45; s.scale.multiplyScalar(1 + dt * .5); }
   stinks = stinks.filter(s => s.material.opacity > 0 || (world.remove(s), false));
   if (state === 'menu') { cam.yaw += dt * .12; return; }
@@ -1199,6 +1293,15 @@ function placeActors(dt) {
     u.legs[0].rotation.x = t.sp ? -s * .7 : 0; u.legs[1].rotation.x = t.sp ? s * .7 : 0;
     u.neck.position.z = .22 + (t.sp ? Math.cos(u.ph * 2) * .035 : 0); u.neck.rotation.x = peck * 1.5 + (t.sp > 2 ? .5 : 0);
     u.b.position.y = .52 + (t.sp ? Math.abs(s) * .015 : 0); u.b.rotation.x = t.sp > 2 ? .2 : peck * .25;
+  }
+  for (const t of gnomes) {
+    const u = t.m.userData; t.m.visible = Math.abs(t.x - player.x) + Math.abs(t.z - player.z) < 85; if (!t.m.visible) continue;
+    t.m.position.set(t.x, 0, t.z); t.m.rotation.y = t.rot;
+    // a waddle: the whole felt body rocks side to side while the boots shuffle
+    u.ph += dt * (t.sp > 2 ? 24 : t.sp > 0 ? 11 : 0); const s = t.sp ? Math.sin(u.ph) : 0;
+    u.body.rotation.z = s * .16; u.body.position.y = Math.abs(s) * .012; u.body.rotation.x = t.sp > 2 ? .18 : 0;
+    u.boots[0].position.z = .012 + s * .04; u.boots[1].position.z = .012 - s * .04;
+    u.boots[0].position.y = .048 + Math.max(0, s) * .025; u.boots[1].position.y = .048 + Math.max(0, -s) * .025;
   }
   for (const cf of coffees) if (!cf.used) cf.m.userData.cup.position.y = 3.4 + Math.sin(tg * 3 + cf.ph) * .15;
   for (const sh of shots) { sh.m.userData.pen.rotation.y = tg * 2.5 + sh.ph; sh.m.userData.pen.position.y = 1.3 + Math.sin(tg * 3 + sh.ph) * .12; const k = (tg * 1.1 + sh.ph) % 1; sh.m.userData.ring.scale.setScalar(1 + k * 1.2); sh.m.userData.ring.material.opacity = .8 * (1 - k); }
