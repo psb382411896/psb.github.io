@@ -579,6 +579,7 @@ function makePerson(name, fallback) {
   Object.assign(g.userData, { rig: { B, rest, rootY: B.Bip01.position.y }, stain, tray, ph: rand(0, 6) });
   return g;
 }
+const v3 = new THREE.Vector3();
 const AXV = { x: new THREE.Vector3(1, 0, 0), y: new THREE.Vector3(0, 1, 0), z: new THREE.Vector3(0, 0, 1) }, tq = new THREE.Quaternion();
 const lerp = (a, b, t) => a + (b - a) * t;
 // Biped joint conventions: z flexes (thigh +forward, knee -bend, arm -forward, elbow -bend, spine +lean), y lowers the arms (L +, R -).
@@ -603,7 +604,31 @@ function animHuman(h, dt, amt, rate, pose) {
     R(sd + '_UpperArm', 'z', tray ? -1.15 : mv * lerp(.4, .8, run) * s + run * .12 * mv - sq * .5);
     R(sd + '_Forearm', 'z', tray ? -.55 : -(.14 + mv * lerp(.25, 1.2, run) - mv * run * .3 * s) - sq * 1.3);
   }
+  if (u.bag) {
+    B.Spine2.getWorldPosition(v3); h.worldToLocal(v3);
+    u.bag.position.set(v3.x, v3.y - .12, v3.z); u.bag.rotation.x = lean * 1.1; u.bag.rotation.z = mv * lerp(.02, .06, run) * Math.sin(ph * 2);
+  }
   B.Bip01.position.y = rootY + mv * lerp(1.2, 6.5, run) * Math.abs(Math.cos(ph)) - mv * run * 1.5 - sq * 42 + (a < .05 ? Math.sin(ph * .25) * .3 : 0);
+}
+
+/* ---------- Thomas's golf bag ---------- */
+function makeGolfBag() {
+  const g = new THREE.Group(), bag = new THREE.Group(); g.add(bag);
+  const navy = mat('#1d2f55', .7), trim = mat('#f2f2ee', .6), blk = mat('#151515', .8), steel = mat('#c9ced4', .2, 1);
+  bag.add(mesh(G.cyl, navy, 0, 0, 0, .125, .86, .125));
+  bag.add(mesh(G.cyl, trim, 0, .43, 0, .135, .05, .135)); bag.add(mesh(G.cyl, blk, 0, -.44, 0, .13, .04, .13));
+  bag.add(mesh(G.box, trim, 0, .05, .12, .13, .3, .06)); bag.add(mesh(G.box, navy, 0, -.24, .125, .12, .16, .05));
+  // club heads poking out of the top: three woods with headcovers, a few irons and the putter
+  const clubs = [[-.05, .04, .3, 'wood', '#c0261b'], [.05, .05, .27, 'wood', '#f2f2ee'], [0, -.01, .24, 'wood', '#1f7a4c'], [-.06, -.05, .2, 'iron'], [.06, -.04, .22, 'iron'], [0, -.07, .18, 'iron'], [.02, .08, .16, 'iron']];
+  for (const [x, z, h, kind, col] of clubs) {
+    bag.add(mesh(G.cyl, steel, x, .43 + h / 2, z, .008, h, .008));
+    if (kind === 'wood') bag.add(mesh(G.sph, mat(col, .9), x, .46 + h, z + .015, .045, .05, .06));
+    else { const hd = mesh(G.box, steel, x + .02, .44 + h, z, .07, .035, .014); hd.rotation.z = .5; bag.add(hd); }
+  }
+  // shoulder strap over the right shoulder
+  const strap = mesh(G.box, blk, .06, .12, .2, .045, .62, .02); strap.rotation.z = .5; bag.add(strap);
+  bag.rotation.z = -.42; bag.position.set(.02, 0, -.17);
+  return g;
 }
 
 /* ---------- Wild turkeys ---------- */
@@ -874,6 +899,7 @@ function startLevel() {
   distLoo = bfs(looIdx);
   const sp = center(sIdx), lp = center(looIdx);
   const pm = makePerson(CAST.thomas, THOMAS); world.add(pm);
+  pm.userData.bag = makeGolfBag(); pm.add(pm.userData.bag);
   player = { x: sp.x, z: sp.z, rot: 0, m: pm, moving: false, boost: 0, stun: 0, kx: 0, kz: 0, hitCool: 0 };
   const lm = makeLoo(); lm.position.set(lp.x, 0, lp.z); world.add(lm);
   loo = { x: lp.x, z: lp.z, m: lm, name: placeName(lp.x, lp.z) };
@@ -1156,7 +1182,6 @@ function finish() {
 }
 
 /* ---------- Render ---------- */
-const v3 = new THREE.Vector3();
 function placeActors(dt) {
   const p = player, lost = (state === 'ending' || state === 'over') && endReason !== 'win';
   p.m.position.set(p.x, 0, p.z); p.m.rotation.y = p.rot;
